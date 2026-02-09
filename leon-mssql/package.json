@@ -1,0 +1,32 @@
+{
+  "name": "leon-mssql",
+  "version": "1.0.0",
+  "description": "MCP Server for executing MSSQL queries with connection string support",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "mcp",
+    "mssql",
+    "sql",
+    "database"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "mssql": "^11.0.1"
+  },
+  "devDependencies": {
+    "@types/mssql": "^9.1.9",
+    "@types/node": "^22.10.2",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
