@@ -7,8 +7,15 @@ export class QueryExecutor {
 
   constructor(private connectionManager: SqlConnectionManager) {}
 
+  private async ensureConnection(): Promise<void> {
+    if (!this.connectionManager.isConnected()) {
+      await this.connectionManager.connectFromEnvironment();
+    }
+  }
+
   async executeQuery(query: string, parameters?: Record<string, any>): Promise<string> {
     return this.executeWithRetry(async () => {
+      await this.ensureConnection();
       const pool = await this.connectionManager.getConnection();
       const request = pool.request();
 
@@ -38,6 +45,7 @@ export class QueryExecutor {
 
   async executeStoredProcedure(procedureName: string, parameters?: Record<string, any>): Promise<string> {
     return this.executeWithRetry(async () => {
+      await this.ensureConnection();
       const pool = await this.connectionManager.getConnection();
       const request = pool.request();
 
@@ -69,6 +77,7 @@ export class QueryExecutor {
 
   async getTables(schema: string = 'dbo'): Promise<string> {
     return this.executeWithRetry(async () => {
+      await this.ensureConnection();
       const pool = await this.connectionManager.getConnection();
       const result = await pool.request()
         .input('schema', sql.NVarChar, schema)
@@ -92,6 +101,7 @@ export class QueryExecutor {
 
   async getTableSchema(tableName: string, schema: string = 'dbo'): Promise<string> {
     return this.executeWithRetry(async () => {
+      await this.ensureConnection();
       const pool = await this.connectionManager.getConnection();
       const result = await pool.request()
         .input('schema', sql.NVarChar, schema)

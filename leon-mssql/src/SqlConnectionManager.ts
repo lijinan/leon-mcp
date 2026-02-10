@@ -117,7 +117,10 @@ export class SqlConnectionManager {
     await this.connectionLock;
     
     if (!this.config) {
-      throw new Error('Database not connected. Please configure connection first.');
+      const connected = await this.connectFromEnvironment();
+      if (!connected) {
+        throw new Error('Database not connected. Please configure connection first or set MSSQL environment variables.');
+      }
     }
 
     if (!this.pool || !this.pool.connected) {
@@ -209,5 +212,60 @@ export class SqlConnectionManager {
 
   getCurrentConfig(): DatabaseConfig | null {
     return this.config;
+  }
+
+  async connectFromEnvironment(): Promise<boolean> {
+    const connectionString = process.env.MSSQL_CONNECTION_STRING;
+    const serverEnv = process.env.MSSQL_SERVER;
+    const databaseEnv = process.env.MSSQL_DATABASE;
+    const userEnv = process.env.MSSQL_USER;
+    const passwordEnv = process.env.MSSQL_PASSWORD;
+    const portEnv = process.env.MSSQL_PORT;
+    const encryptEnv = process.env.MSSQL_ENCRYPT;
+    const trustServerCertEnv = process.env.MSSQL_TRUST_SERVER_CERTIFICATE;
+
+    if (!connectionString && !(serverEnv && databaseEnv && userEnv && passwordEnv)) {
+      return false;
+    }
+
+    const config: DatabaseConfig = {};
+
+    if (connectionString) {
+      let enhancedConnectionString = this.normalizeConnectionString(connectionString);
+      
+      if (!enhancedConnectionString.endsWith(';')) {
+        enhancedConnectionString += ';';
+      }
+      
+      const isIpAddress = this.isIpAddress(enhancedConnectionString);
+      
+      if (!enhancedConnectionString.toLowerCase().includes('encrypt=')) {
+        enhancedConnectionString += isIpAddress ? 'Encrypt=false;' : 'Encrypt=true;';
+      }
+      if (!enhancedConnectionString.toLowerCase().includes('trustservercertificate=')) {
+        enhancedConnectionString += 'TrustServerCertificate=true;';
+      }
+      
+      config.connectionString = enhancedConnectionString;
+    } else {
+      const isIpAddress = serverEnv ? /^(\d{1,3}\.){3}\d{1,3}$/.test(serverEnv) : false;
+      
+      config.server = serverEnv;
+      config.database = databaseEnv;
+      config.user = userEnv;
+      config.password = passwordEnv;
+      if (portEnv) config.port = parseInt(portEnv, 10);
+      if (encryptEnv) config.encrypt = encryptEnv.toLowerCase() === 'true';
+      if (trustServerCertEnv) config.trustServerCertificate = trustServerCertEnv.toLowerCase() === 'true';
+      if (config.encrypt === undefined) {
+        config.encrypt = !isIpAddress;
+      }
+      if (config.trustServerCertificate === undefined) {
+        config.trustServerCertificate = true;
+      }
+    }
+
+    await this.configureConnection(config);
+    return true;
   }
 }
